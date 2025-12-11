@@ -10,7 +10,7 @@ export default defineConfig({
   // Si c'est dans un sous-dossier, adaptez le chemin en conséquence
   base: process.env.GITHUB_REPOSITORY 
     ? `/${process.env.GITHUB_REPOSITORY.split('/')[1]}/` 
-    : '/TP_PWA/',
+    : '/progressive_web_app/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
