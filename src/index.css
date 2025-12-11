@@ -64,7 +64,8 @@
     @apply border-border;
   }
   html, body {
-    @apply bg-slate-950 text-foreground;
+    @apply bg-transparent dark:bg-slate-950 text-foreground;
     min-height: 100%;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 }

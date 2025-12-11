@@ -1,10 +1,81 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png" />
+    <link rel="shortcut icon" type="image/png" href="/icons/icon-192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Météo PWA</title>
+    
+    <!-- SEO Meta Tags -->
+    <title>Météo PWA - Application météo Progressive Web App</title>
+    <meta name="description" content="Application météo Progressive Web App. Consultez la météo en temps réel, les prévisions horaires et gérez vos villes favorites dans une interface moderne et élégante." />
+    <meta name="keywords" content="météo, prévisions météo, PWA, application météo, météo temps réel, Open-Meteo" />
+    <meta name="author" content="Météo PWA" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://meteo-pwa.example.com" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://meteo-pwa.example.com" />
+    <meta property="og:title" content="Météo PWA - Application météo Progressive Web App" />
+    <meta property="og:description" content="Application météo Progressive Web App. Consultez la météo en temps réel, les prévisions horaires et gérez vos villes favorites dans une interface moderne et élégante." />
+    <meta property="og:image" content="/screenshot_desktop.png" />
+    <meta property="og:image:width" content="2936" />
+    <meta property="og:image:height" content="1510" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:site_name" content="Météo PWA" />
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://meteo-pwa.example.com" />
+    <meta name="twitter:title" content="Météo PWA - Application météo Progressive Web App" />
+    <meta name="twitter:description" content="Application météo Progressive Web App. Consultez la météo en temps réel, les prévisions horaires et gérez vos villes favorites dans une interface moderne et élégante." />
+    <meta name="twitter:image" content="/screenshot_desktop.png" />
+    
+    <!-- Mobile Web App -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Météo" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Météo PWA",
+      "description": "Application météo Progressive Web App. Consultez la météo en temps réel, les prévisions horaires et gérez vos villes favorites dans une interface moderne et élégante.",
+      "url": "https://meteo-pwa.example.com",
+      "applicationCategory": "WeatherApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "EUR"
+      },
+      "screenshot": [
+        {
+          "@type": "ImageObject",
+          "url": "/screenshot_desktop.png",
+          "width": 2936,
+          "height": 1510
+        },
+        {
+          "@type": "ImageObject",
+          "url": "/screenshot_mobile.png",
+          "width": 616,
+          "height": 1344
+        }
+      ],
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "5",
+        "ratingCount": "1"
+      }
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -95,3 +95,47 @@ L'application est configurée comme PWA avec :
 - Cache stratégique des APIs (NetworkFirst)
 
 Les icônes PWA sont dans `public/icons/`.
+
+## 🚀 Déploiement sur GitHub Pages
+
+### Configuration automatique
+
+L'application est configurée pour être déployée automatiquement sur GitHub Pages via GitHub Actions.
+
+#### Étapes pour activer le déploiement :
+
+1. **Activer GitHub Pages dans votre repository** :
+   - Allez dans les **Settings** de votre repository GitHub
+   - Dans la section **Pages**, sous **Source**, sélectionnez **GitHub Actions**
+
+2. **Vérifier le nom du repository** :
+   - Le workflow utilise automatiquement le nom de votre repository
+   - Si votre repository s'appelle `TP_PWA`, l'URL sera : `https://votre-username.github.io/TP_PWA/`
+   - Si vous avez besoin de changer le base path, modifiez la ligne `base` dans `vite.config.ts`
+
+3. **Déployer** :
+   - Poussez votre code sur la branche `main` (ou `master`)
+   - Le workflow GitHub Actions se déclenchera automatiquement
+   - Vous pouvez aussi déclencher manuellement via l'onglet **Actions** de GitHub
+
+4. **Vérifier le déploiement** :
+   - Une fois le workflow terminé, votre application sera disponible à l'URL GitHub Pages
+   - Le workflow affichera l'URL dans les logs
+
+### Configuration manuelle du base path
+
+Si votre repository a un nom différent ou si vous déployez dans un sous-dossier, modifiez `vite.config.ts` :
+
+```typescript
+base: '/nom-de-votre-repo/',
+```
+
+### Déploiement local (pour tester)
+
+Pour tester le build avec le bon base path localement :
+
+```bash
+# Remplacez 'username/repo-name' par votre repository GitHub
+GITHUB_REPOSITORY=username/repo-name npm run build
+npm run preview
+```

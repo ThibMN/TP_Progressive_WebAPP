@@ -5,26 +5,62 @@ import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Base path pour GitHub Pages (remplacez 'TP_PWA' par le nom de votre repo)
+  // Si votre repo est à la racine de votre compte GitHub, utilisez '/nom-du-repo/'
+  // Si c'est dans un sous-dossier, adaptez le chemin en conséquence
+  base: process.env.GITHUB_REPOSITORY 
+    ? `/${process.env.GITHUB_REPOSITORY.split('/')[1]}/` 
+    : '/TP_PWA/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    hmr: {
+      protocol: 'ws',
+      host: 'localhost',
+      port: 5173,
+    },
+  },
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      injectRegister: false, // Désactiver l'enregistrement automatique, on le fait manuellement
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
         name: 'Météo PWA',
         short_name: 'Météo',
         description: 'Application météo Progressive Web App',
-        theme_color: '#ffffff',
-        background_color: '#ffffff',
+        theme_color: '#020617',
+        background_color: '#020617',
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',
         start_url: '/',
+        lang: 'fr',
+        screenshots: [
+          {
+            src: '/screenshot_mobile.png',
+            sizes: '616x1344',
+            type: 'image/png',
+            form_factor: 'narrow',
+            label: 'Capture d\'écran mobile de l\'application Météo'
+          },
+          {
+            src: '/screenshot_mobile.png',
+            sizes: '616x1344',
+            type: 'image/png',
+            label: 'Capture d\'écran mobile de l\'application Météo'
+          },
+          {
+            src: '/screenshot_desktop.png',
+            sizes: '2936x1510',
+            type: 'image/png',
+            form_factor: 'wide',
+            label: 'Capture d\'écran desktop de l\'application Météo'
+          }
+        ],
         icons: [
           {
             src: '/icons/icon-72.png',
@@ -60,7 +96,13 @@ export default defineConfig({
             src: '/icons/icon-192.png',
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
+          },
+          {
+            src: '/icons/icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'maskable'
           },
           {
             src: '/icons/icon-384.png',
@@ -72,40 +114,13 @@ export default defineConfig({
             src: '/icons/icon-512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable'
-          }
-        ]
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/api\.open-meteo\.com\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'open-meteo-api-cache',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 // 1 heure
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
+            purpose: 'any'
           },
           {
-            urlPattern: /^https:\/\/geocoding-api\.open-meteo\.com\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'geocoding-api-cache',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 // 24 heures
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
+            src: '/icons/icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       }

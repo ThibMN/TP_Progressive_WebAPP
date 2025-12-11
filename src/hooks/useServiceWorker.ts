@@ -1,0 +1,33 @@
+import { useEffect } from 'react'
+
+export function useServiceWorker() {
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      const registerServiceWorker = async () => {
+        try {
+          const registration = await navigator.serviceWorker.register('/service-worker.js', {
+            scope: '/'
+          })
+          console.log('✅ Service Worker enregistré:', registration.scope)
+
+          // Vérifier les mises à jour
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing
+            if (newWorker) {
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  console.log('🔄 Nouveau service worker disponible')
+                  // Optionnel : demander à l'utilisateur de recharger
+                }
+              })
+            }
+          })
+        } catch (error) {
+          console.error('❌ Erreur Service Worker:', error)
+        }
+      }
+
+      registerServiceWorker()
+    }
+  }, [])
+}
