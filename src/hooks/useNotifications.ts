@@ -1,11 +1,81 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import type { WeatherData } from '@/lib/types'
 import { CONFIG } from '@/lib/config'
+
+// Stockage des notifications déjà envoyées pour éviter les doublons
+const NOTIFICATION_STORAGE_KEY = 'meteo-pwa-notifications-sent'
+const NOTIFICATION_COOLDOWN = 30 * 60 * 1000 // 30 minutes en millisecondes
+
+interface NotificationState {
+  rain: {
+    sent: boolean
+    timestamp: number
+    city: string
+  }
+  temperature: {
+    sent: boolean
+    timestamp: number
+    city: string
+    maxTemp: number
+  }
+}
+
+function getStoredNotifications(): NotificationState {
+  try {
+    const stored = localStorage.getItem(NOTIFICATION_STORAGE_KEY)
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      // Vérifier si les notifications sont encore valides (pas trop anciennes)
+      const now = Date.now()
+      if (parsed.rain && now - parsed.rain.timestamp < NOTIFICATION_COOLDOWN) {
+        // Garder la notification de pluie
+      } else {
+        parsed.rain = { sent: false, timestamp: 0, city: '' }
+      }
+      if (parsed.temperature && now - parsed.temperature.timestamp < NOTIFICATION_COOLDOWN) {
+        // Garder la notification de température
+      } else {
+        parsed.temperature = { sent: false, timestamp: 0, city: '', maxTemp: 0 }
+      }
+      return parsed
+    }
+  } catch (error) {
+    console.error('Erreur lors de la lecture des notifications stockées:', error)
+  }
+  return {
+    rain: { sent: false, timestamp: 0, city: '' },
+    temperature: { sent: false, timestamp: 0, city: '', maxTemp: 0 },
+  }
+}
+
+function storeNotification(type: 'rain' | 'temperature', city: string, maxTemp?: number): void {
+  try {
+    const stored = getStoredNotifications()
+    if (type === 'rain') {
+      stored.rain = {
+        sent: true,
+        timestamp: Date.now(),
+        city,
+      }
+    } else if (type === 'temperature' && maxTemp !== undefined) {
+      stored.temperature = {
+        sent: true,
+        timestamp: Date.now(),
+        city,
+        maxTemp,
+      }
+    }
+    localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(stored))
+  } catch (error) {
+    console.error('Erreur lors du stockage de la notification:', error)
+  }
+}
 
 export function useNotifications() {
   const [permission, setPermission] = useState<NotificationPermission>(
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
   )
+  const lastCheckedRef = useRef<string>('') // Pour éviter les vérifications répétées pour les mêmes données
 
   useEffect(() => {
     if (typeof Notification !== 'undefined') {
@@ -36,6 +106,14 @@ export function useNotifications() {
   const checkWeatherConditions = (weather: WeatherData, cityName: string): void => {
     if (!weather.hourly || weather.hourly.time.length === 0) return
 
+    // Créer une clé unique pour cette vérification (ville + première heure)
+    const checkKey = `${cityName}-${weather.hourly.time[0]}`
+    if (checkKey === lastCheckedRef.current) {
+      // Déjà vérifié pour ces mêmes données
+      return
+    }
+    lastCheckedRef.current = checkKey
+
     // Vérifier les 4 prochaines heures
     const next4HoursData = {
       time: weather.hourly.time.slice(0, 4),
@@ -47,6 +125,7 @@ export function useNotifications() {
     let hasRain = false
     let hasHighTemp = false
     let maxTemp = -Infinity
+    let rainHourIndex = -1
 
     for (let i = 0; i < next4HoursData.time.length; i++) {
       const weatherCode = next4HoursData.weatherCode[i]
@@ -56,6 +135,9 @@ export function useNotifications() {
       // Vérifier si il y a de la pluie (codes météo de pluie ou probabilité significative)
       if ((CONFIG.RAIN_CODES as readonly number[]).includes(weatherCode) || precipitation > 30) {
         hasRain = true
+        if (rainHourIndex === -1) {
+          rainHourIndex = i
+        }
       }
 
       // Vérifier si la température dépasse 10° et garder la température max
@@ -65,23 +147,56 @@ export function useNotifications() {
       }
     }
 
-    // Envoyer les notifications si nécessaire
+    // Récupérer l'état des notifications déjà envoyées
+    const stored = getStoredNotifications()
+
+    // Envoyer la notification de pluie si nécessaire
     if (hasRain) {
-      sendNotification(
-        `🌧️ Pluie prévue à ${cityName}`,
-        'De la pluie est attendue dans les 4 prochaines heures.'
-      )
+      const shouldSendRain =
+        !stored.rain.sent ||
+        stored.rain.city !== cityName ||
+        Date.now() - stored.rain.timestamp > NOTIFICATION_COOLDOWN
+
+      if (shouldSendRain) {
+        const hoursUntilRain = rainHourIndex + 1
+        sendNotification(
+          `🌧️ Pluie prévue à ${cityName}`,
+          `De la pluie est attendue dans ${hoursUntilRain} heure${hoursUntilRain > 1 ? 's' : ''}.`,
+          'rain-alert',
+          cityName
+        )
+        storeNotification('rain', cityName)
+      }
     }
 
+    // Envoyer la notification de température si nécessaire
     if (hasHighTemp && maxTemp > -Infinity) {
-      sendNotification(
-        `🌡️ Température élevée à ${cityName}`,
-        `La température va dépasser les 10°C (jusqu'à ${Math.round(maxTemp)}°C) dans les 4 prochaines heures.`
-      )
+      const shouldSendTemp =
+        !stored.temperature.sent ||
+        stored.temperature.city !== cityName ||
+        Math.abs(stored.temperature.maxTemp - maxTemp) > 2 || // Température significativement différente
+        Date.now() - stored.temperature.timestamp > NOTIFICATION_COOLDOWN
+
+      if (shouldSendTemp) {
+        sendNotification(
+          `🌡️ Température élevée à ${cityName}`,
+          `La température va dépasser les ${CONFIG.TEMP_THRESHOLD}°C (jusqu'à ${Math.round(maxTemp)}°C) dans les 4 prochaines heures.`,
+          'temp-alert',
+          cityName,
+          maxTemp
+        )
+        storeNotification('temperature', cityName, maxTemp)
+      }
     }
   }
 
-  const sendNotification = (title: string, body: string): void => {
+  const sendNotification = (
+    title: string,
+    body: string,
+    tag: string,
+    cityName: string,
+    maxTemp?: number
+  ): void => {
     if (typeof Notification === 'undefined') {
       return
     }
@@ -95,9 +210,10 @@ export function useNotifications() {
         body,
         icon: '/icons/icon-192.png',
         badge: '/icons/icon-72.png',
-        tag: 'weather-alert',
+        tag, // Tag unique pour chaque type de notification
         requireInteraction: false,
       })
+      console.log(`Notification envoyée: ${title} pour ${cityName}`, maxTemp ? `(temp: ${maxTemp}°C)` : '')
     } catch (error) {
       console.error('Erreur lors de l\'envoi de la notification:', error)
     }
