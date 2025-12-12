@@ -1,22 +1,32 @@
-import { CONFIG } from './config';
-import type { Location, WeatherData, GeocodingResponse, WeatherResponse } from './types';
+import { CONFIG } from './config'
+import type { Location, WeatherData, GeocodingResponse, WeatherResponse } from './types'
+
+export async function searchCities(query: string, count = 5): Promise<Location[]> {
+  const response = await fetch(
+    `${CONFIG.GEOCODING_API}?name=${encodeURIComponent(query)}&count=${count}&language=fr&format=json`
+  )
+
+  if (!response.ok) {
+    throw new Error('Erreur de géocodage')
+  }
+
+  const data: GeocodingResponse = await response.json()
+
+  if (!data.results || data.results.length === 0) {
+    return []
+  }
+
+  return data.results
+}
 
 export async function searchCity(query: string): Promise<Location> {
-  const response = await fetch(
-    `${CONFIG.GEOCODING_API}?name=${encodeURIComponent(query)}&count=1&language=fr&format=json`
-  );
-  
-  if (!response.ok) {
-    throw new Error('Erreur de géocodage');
+  const results = await searchCities(query, 1)
+
+  if (results.length === 0) {
+    throw new Error(`Ville "${query}" non trouvée. Vérifiez l'orthographe.`)
   }
-  
-  const data: GeocodingResponse = await response.json();
-  
-  if (!data.results || data.results.length === 0) {
-    throw new Error(`Ville "${query}" non trouvée. Vérifiez l'orthographe.`);
-  }
-  
-  return data.results[0];
+
+  return results[0]
 }
 
 export async function fetchWeather(lat: number, lon: number): Promise<WeatherData> {
@@ -25,14 +35,14 @@ export async function fetchWeather(lat: number, lon: number): Promise<WeatherDat
     `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m` +
     `&hourly=temperature_2m,weather_code,precipitation_probability` +
     `&timezone=auto&forecast_days=1`
-  );
+  )
   
   if (!response.ok) {
-    throw new Error('Erreur lors de la récupération des données météo');
+    throw new Error('Erreur lors de la récupération des données météo')
   }
   
-  const data: WeatherResponse = await response.json();
-  return data;
+  const data: WeatherResponse = await response.json()
+  return data
 }
 
 export function getWeatherEmoji(code: number): string {

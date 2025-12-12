@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { NotificationBanner } from '@/components/NotificationBanner'
-import { fetchWeather, getWeatherEmoji, searchCity } from './lib/api'
+import { fetchWeather, getWeatherEmoji, searchCities, searchCity } from './lib/api'
 import type { Location, WeatherData } from './lib/types'
 import { useFavorites } from './hooks/useFavorites'
 import { useNotifications } from './hooks/useNotifications'
@@ -16,6 +16,9 @@ function App() {
   const [weather, setWeather] = useState<WeatherData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [suggestions, setSuggestions] = useState<Location[]>([])
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false)
+  const [suggestionsError, setSuggestionsError] = useState<string | null>(null)
 
   const { favorites, addFavorite, removeFavorite, isFavorite } = useFavorites()
   const { permission, requestPermission, checkWeatherConditions } = useNotifications()
@@ -30,6 +33,46 @@ function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weather, location, permission])
+
+  useEffect(() => {
+    const trimmed = query.trim()
+
+    if (trimmed.length < 2) {
+      setSuggestions([])
+      setSuggestionsLoading(false)
+      setSuggestionsError(null)
+      return
+    }
+
+    let cancelled = false
+    setSuggestionsError(null)
+    setSuggestionsLoading(true)
+
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchCities(trimmed, 5)
+        if (!cancelled) {
+          setSuggestions(results)
+          setSuggestionsError(results.length === 0 ? 'Aucune ville trouvée pour cette recherche.' : null)
+        }
+      } catch (err) {
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : 'Erreur lors de la recherche des villes.'
+          setSuggestionsError(message)
+          setSuggestions([])
+        }
+      } finally {
+        if (!cancelled) {
+          setSuggestionsLoading(false)
+        }
+      }
+    }, 300)
+
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [query])
 
   const handleSearch = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -46,6 +89,7 @@ function App() {
       const data = await fetchWeather(foundCity.latitude, foundCity.longitude)
       setLocation(foundCity)
       setWeather(data)
+      setSuggestions([])
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur inattendue.'
       setError(message)
@@ -145,38 +189,124 @@ function App() {
             />
             <div className="glass-card rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 backdrop-blur-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] p-4 sm:p-5 md:p-6 relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none"></div>
-              <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3 relative z-10">
-                <div className="flex-1">
-                  <label className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 mb-1.5 sm:mb-2 block font-medium">Ville</label>
-                  <div className="glass-input flex items-center gap-2 rounded-lg sm:rounded-xl border border-slate-300/50 dark:border-white/10 bg-white/5 dark:bg-white/5 backdrop-blur-xl px-3 py-2.5 sm:py-2 focus-within:ring-2 focus-within:ring-slate-400/50 dark:focus-within:ring-white/30 focus-within:border-slate-400/60 dark:focus-within:border-white/20 focus-within:bg-white/10 dark:focus-within:bg-white/10 transition-all duration-300 hover:border-slate-400/60 dark:hover:border-white/15 hover:bg-white/7 dark:hover:bg-white/7">
-                    <svg
-                      className="w-4 h-4 sm:w-5 sm:h-5 text-slate-500 dark:text-slate-300 flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      viewBox="0 0 24 24"
-                      aria-hidden
+              <form onSubmit={handleSearch} className="relative z-10 space-y-3 sm:space-y-4">
+                <label className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 block font-medium">Ville</label>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex-1">
+                    <div className="glass-input flex items-center gap-2 rounded-lg sm:rounded-xl border border-slate-300/50 dark:border-white/10 bg-white/5 dark:bg-white/5 backdrop-blur-xl px-3 py-2.5 sm:py-2 focus-within:ring-2 focus-within:ring-slate-400/50 dark:focus-within:ring-white/30 focus-within:border-slate-400/60 dark:focus-within:border-white/20 focus-within:bg-white/10 dark:focus-within:bg-white/10 transition-all duration-300 hover:border-slate-400/60 dark:hover:border-white/15 hover:bg-white/7 dark:hover:bg-white/7">
+                      <svg
+                        className="w-4 h-4 sm:w-5 sm:h-5 text-slate-500 dark:text-slate-300 flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        viewBox="0 0 24 24"
+                        aria-hidden
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 5.64 5.64a7.5 7.5 0 0 0 10.61 10.61Z" />
+                      </svg>
+                      <input
+                        type="text"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Paris, Montréal, Tokyo..."
+                        className="w-full bg-transparent outline-none placeholder:text-slate-500 dark:placeholder:text-slate-400 text-slate-800 dark:text-white text-sm sm:text-base"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center sm:items-center sm:self-start">
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full sm:w-auto sm:min-w-[48px] h-11 sm:h-[46px] flex items-center justify-center text-sm sm:text-base font-semibold"
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 5.64 5.64a7.5 7.5 0 0 0 10.61 10.61Z" />
-                    </svg>
-                    <input
-                      type="text"
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Paris, Montréal, Tokyo..."
-                      className="w-full bg-transparent outline-none placeholder:text-slate-500 dark:placeholder:text-slate-400 text-slate-800 dark:text-white text-sm sm:text-base"
-                    />
+                      {loading ? (
+                        <>
+                          <svg
+                            className="w-5 h-5 animate-spin text-slate-800 dark:text-white"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            aria-hidden
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4Z"
+                            />
+                          </svg>
+                          <span className="sr-only">Recherche...</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg
+                            className="w-5 h-5 text-slate-800 dark:text-white"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            viewBox="0 0 24 24"
+                            aria-hidden
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 5.64 5.64a7.5 7.5 0 0 0 10.61 10.61Z" />
+                          </svg>
+                          <span className="sr-only">Rechercher</span>
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </div>
-                <div className="flex items-end">
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full sm:w-auto sm:min-w-[140px] md:w-40 h-10 sm:h-11 text-sm sm:text-base font-semibold"
-                  >
-                    {loading ? 'Recherche...' : 'Rechercher'}
-                  </Button>
-                </div>
+                {suggestionsLoading && (
+                  <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+                    Recherche des villes...
+                  </div>
+                )}
+                {!suggestionsLoading && suggestionsError && query.trim().length >= 2 && (
+                  <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+                    {suggestionsError}
+                  </div>
+                )}
+                {suggestions.length > 0 && (
+                  <div className="space-y-0.5">
+                    {suggestions.map((city) => (
+                      <button
+                        key={`${city.name}-${city.latitude}-${city.longitude}`}
+                        type="button"
+                        onClick={async () => {
+                          setQuery(city.name)
+                          setSuggestions([])
+                          setLoading(true)
+                          setError(null)
+                          try {
+                            const data = await fetchWeather(city.latitude, city.longitude)
+                            setLocation(city)
+                            setWeather(data)
+                          } catch (err) {
+                            const message = err instanceof Error ? err.message : 'Erreur inattendue.'
+                            setError(message)
+                            setWeather(null)
+                            setLocation(null)
+                          } finally {
+                            setLoading(false)
+                          }
+                        }}
+                        className="w-full text-left px-1.5 py-1.5 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-white/10 rounded transition-colors duration-150 text-sm sm:text-base"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-medium text-slate-800 dark:text-white truncate">{city.name}</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-300 truncate">
+                            {city.admin1 ? `${city.admin1}, ` : ''}{city.country}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </form>
               {error && (
                 <div className="mt-3 sm:mt-4 rounded-lg sm:rounded-xl border border-red-400/30 dark:border-red-400/30 border-red-500/50 dark:border-red-400/30 bg-red-500/20 dark:bg-red-500/20 bg-red-100/80 dark:bg-red-500/20 backdrop-blur-xl text-red-100 dark:text-red-100 text-red-800 dark:text-red-100 px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm shadow-[0_4px_16px_0_rgba(239,68,68,0.2)] dark:shadow-[0_4px_16px_0_rgba(239,68,68,0.2)] relative z-10">
