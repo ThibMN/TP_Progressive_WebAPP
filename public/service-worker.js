@@ -147,6 +147,21 @@ self.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'SKIP_WAITING') {
         self.skipWaiting();
     }
+    
+    // Gestion des notifications depuis l'application
+    if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+        const { title, body, tag, icon, badge } = event.data;
+        event.waitUntil(
+            self.registration.showNotification(title, {
+                body,
+                icon: icon || '/icons/icon-192.png',
+                badge: badge || '/icons/icon-72.png',
+                tag: tag || 'default',
+                requireInteraction: false,
+                vibrate: [200, 100, 200],
+            })
+        );
+    }
 });
 
 console.log('[SW] Service Worker chargé');

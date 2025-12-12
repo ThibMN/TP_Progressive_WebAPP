@@ -190,32 +190,75 @@ export function useNotifications() {
     }
   }
 
-  const sendNotification = (
+  const sendNotification = async (
     title: string,
     body: string,
     tag: string,
     cityName: string,
     maxTemp?: number
-  ): void => {
+  ): Promise<void> => {
     if (typeof Notification === 'undefined') {
+      console.warn('Les notifications ne sont pas supportées')
       return
     }
 
     if (Notification.permission !== 'granted') {
+      console.warn('Permission de notification non accordée')
       return
     }
 
     try {
+      // Essayer d'utiliser le service worker d'abord (meilleure pratique pour PWA)
+      if ('serviceWorker' in navigator) {
+        try {
+          // Attendre que le service worker soit prêt
+          await navigator.serviceWorker.ready
+          
+          // Si pas de contrôleur, attendre un peu et réessayer
+          if (!navigator.serviceWorker.controller) {
+            // Attendre jusqu'à 2 secondes pour que le SW soit prêt
+            await new Promise<void>((resolve) => {
+              const timeout = setTimeout(() => resolve(), 2000)
+              const handler = () => {
+                clearTimeout(timeout)
+                navigator.serviceWorker.removeEventListener('controllerchange', handler)
+                resolve()
+              }
+              navigator.serviceWorker.addEventListener('controllerchange', handler)
+            })
+          }
+
+          // Essayer d'envoyer via le service worker
+          if (navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({
+              type: 'SHOW_NOTIFICATION',
+              title,
+              body,
+              tag,
+              icon: '/icons/icon-192.png',
+              badge: '/icons/icon-72.png',
+            })
+            console.log(`✅ Notification envoyée via SW: ${title} pour ${cityName}`, maxTemp ? `(temp: ${maxTemp}°C)` : '')
+            return
+          } else {
+            console.warn('⚠️ Service Worker enregistré mais pas de contrôleur disponible')
+          }
+        } catch (swError) {
+          console.warn('⚠️ Erreur avec le service worker, utilisation du fallback:', swError)
+        }
+      }
+      
+      // Fallback : utiliser l'API Notification directement si le SW n'est pas disponible
       new Notification(title, {
         body,
         icon: '/icons/icon-192.png',
         badge: '/icons/icon-72.png',
-        tag, // Tag unique pour chaque type de notification
+        tag,
         requireInteraction: false,
       })
-      console.log(`Notification envoyée: ${title} pour ${cityName}`, maxTemp ? `(temp: ${maxTemp}°C)` : '')
+      console.log(`✅ Notification envoyée directement: ${title} pour ${cityName}`, maxTemp ? `(temp: ${maxTemp}°C)` : '')
     } catch (error) {
-      console.error('Erreur lors de l\'envoi de la notification:', error)
+      console.error('❌ Erreur lors de l\'envoi de la notification:', error)
     }
   }
 
