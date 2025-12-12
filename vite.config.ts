@@ -2,6 +2,17 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
+import { writeFileSync } from 'fs'
+
+// Plugin pour créer le fichier .nojekyll (nécessaire pour GitHub Pages)
+const noJekyllPlugin = () => {
+  return {
+    name: 'no-jekyll',
+    writeBundle() {
+      writeFileSync(path.resolve(__dirname, 'dist/.nojekyll'), '')
+    }
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -25,6 +36,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    noJekyllPlugin(),
     VitePWA({
       injectRegister: false, // Désactiver l'enregistrement automatique, on le fait manuellement
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
