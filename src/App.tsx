@@ -131,7 +131,16 @@ function App() {
         <img 
           src={fogBackground}
           alt=""
-          className="absolute inset-0 w-full h-full object-cover opacity-20 dark:opacity-40 z-[1] pointer-events-none transition-opacity duration-300"
+          className="absolute inset-0 w-full h-full object-cover opacity-100 dark:opacity-40 z-[1] pointer-events-none transition-opacity duration-300 dark:hidden"
+          style={{
+            filter: 'brightness(0)',
+            mixBlendMode: 'darken',
+          }}
+        />
+        <img 
+          src={fogBackground}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover opacity-40 z-[1] pointer-events-none transition-opacity duration-300 hidden dark:block"
           style={{
             mixBlendMode: 'normal',
           }}
@@ -217,7 +226,7 @@ function App() {
                     <Button
                       type="submit"
                       disabled={loading}
-                      className="w-full sm:w-auto sm:min-w-[48px] h-11 sm:h-[46px] flex items-center justify-center text-sm sm:text-base font-semibold"
+                      className="w-full sm:w-auto sm:min-w-[48px] h-11 sm:h-[46px] flex items-center justify-center text-sm sm:text-base font-semibold bg-white/90 dark:bg-white/10 backdrop-blur-xl text-slate-800 dark:text-white border border-slate-300/50 dark:border-white/20 hover:bg-white dark:hover:bg-white/15 hover:border-slate-400/60 dark:hover:border-white/30 shadow-[0_4px_16px_0_rgba(0,0,0,0.1)] dark:shadow-[0_4px_16px_0_rgba(255,255,255,0.05)] hover:shadow-[0_8px_32px_0_rgba(0,0,0,0.15)] dark:hover:shadow-[0_8px_32px_0_rgba(255,255,255,0.1)]"
                     >
                       {loading ? (
                         <>
