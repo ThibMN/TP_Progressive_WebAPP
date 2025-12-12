@@ -1,17 +1,38 @@
 // ===== CONFIGURATION =====
 // Service Worker pour l'application React Météo PWA
 const CACHE_NAME = 'meteo-pwa-v1';
+
+// Détecter automatiquement le base path depuis l'URL du service worker
+// Exemple: si SW est à /progressive_web_app/service-worker.js, basePath = /progressive_web_app/
+const getBasePath = () => {
+    const swPath = self.location.pathname; // ex: /progressive_web_app/service-worker.js
+    const basePath = swPath.substring(0, swPath.lastIndexOf('/') + 1); // ex: /progressive_web_app/
+    return basePath;
+};
+
+const BASE_PATH = getBasePath();
+
+// Fonction pour préfixer un chemin avec le base path
+const withBasePath = (path) => {
+    // Si le chemin commence déjà par le base path, le retourner tel quel
+    if (path.startsWith(BASE_PATH)) return path;
+    // Si c'est un chemin absolu commençant par /, remplacer le / par BASE_PATH
+    if (path.startsWith('/')) return BASE_PATH + path.substring(1);
+    // Sinon, ajouter BASE_PATH devant
+    return BASE_PATH + path;
+};
+
 const ASSETS = [
-    '/',
-    '/index.html',
-    '/icons/icon-72.png',
-    '/icons/icon-96.png',
-    '/icons/icon-128.png',
-    '/icons/icon-144.png',
-    '/icons/icon-152.png',
-    '/icons/icon-192.png',
-    '/icons/icon-384.png',
-    '/icons/icon-512.png'
+    BASE_PATH, // ex: /progressive_web_app/
+    withBasePath('/index.html'),
+    withBasePath('/icons/icon-72.png'),
+    withBasePath('/icons/icon-96.png'),
+    withBasePath('/icons/icon-128.png'),
+    withBasePath('/icons/icon-144.png'),
+    withBasePath('/icons/icon-152.png'),
+    withBasePath('/icons/icon-192.png'),
+    withBasePath('/icons/icon-384.png'),
+    withBasePath('/icons/icon-512.png')
 ];
 
 // ===== INSTALL =====
@@ -130,7 +151,7 @@ async function cacheFirst(request) {
         
         // Si c'est une page HTML, retourner la page d'accueil en cache
         if (request.headers.get('accept')?.includes('text/html')) {
-            const fallback = await caches.match('/index.html');
+            const fallback = await caches.match(withBasePath('/index.html'));
             if (fallback) return fallback;
         }
         
@@ -155,8 +176,8 @@ self.addEventListener('message', (event) => {
         event.waitUntil(
             self.registration.showNotification(title, {
                 body,
-                icon: icon || '/icons/icon-192.png',
-                badge: badge || '/icons/icon-72.png',
+                icon: icon || withBasePath('/icons/icon-192.png'),
+                badge: badge || withBasePath('/icons/icon-72.png'),
                 tag: tag || 'default',
                 requireInteraction: false,
                 vibrate: [200, 100, 200],
@@ -169,4 +190,4 @@ self.addEventListener('message', (event) => {
     }
 });
 
-console.log('[SW] Service Worker chargé');
+console.log('[SW] Service Worker chargé, base path:', BASE_PATH);

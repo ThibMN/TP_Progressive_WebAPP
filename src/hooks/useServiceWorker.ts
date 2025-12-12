@@ -5,8 +5,10 @@ export function useServiceWorker() {
     if ('serviceWorker' in navigator) {
       const registerServiceWorker = async () => {
         try {
-          const registration = await navigator.serviceWorker.register('/service-worker.js', {
-            scope: '/'
+          const swUrl = `${import.meta.env.BASE_URL}service-worker.js`
+          const scope = import.meta.env.BASE_URL || '/'
+          const registration = await navigator.serviceWorker.register(swUrl, {
+            scope
           })
           console.log('✅ Service Worker enregistré:', registration.scope)
 

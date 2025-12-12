@@ -257,11 +257,11 @@ export function useNotifications() {
       if ('serviceWorker' in navigator) {
         try {
           // Attendre que le service worker soit prêt
-          await navigator.serviceWorker.ready
-          
+          const registration = await navigator.serviceWorker.ready
+
           // Si pas de contrôleur, attendre un peu et réessayer
           if (!navigator.serviceWorker.controller) {
-            // Attendre jusqu'à 2 secondes pour que le SW soit prêt
+            // Attendre jusqu'à 2 secondes pour que le SW prenne le contrôle
             await new Promise<void>((resolve) => {
               const timeout = setTimeout(() => resolve(), 2000)
               const handler = () => {
@@ -273,31 +273,47 @@ export function useNotifications() {
             })
           }
 
-          // Essayer d'envoyer via le service worker
+          const baseUrl = import.meta.env.BASE_URL || '/'
+
+          // Essayer d'envoyer via le contrôleur si disponible
           if (navigator.serviceWorker.controller) {
             navigator.serviceWorker.controller.postMessage({
               type: 'SHOW_NOTIFICATION',
               title,
               body,
               tag,
-              icon: '/icons/icon-192.png',
-              badge: '/icons/icon-72.png',
+              icon: `${baseUrl}icons/icon-192.png`,
+              badge: `${baseUrl}icons/icon-72.png`,
             })
             console.log(`✅ Notification envoyée via SW: ${title} pour ${cityName}`, maxTemp ? `(temp: ${maxTemp}°C)` : '')
             return
-          } else {
-            console.warn('⚠️ Service Worker enregistré mais pas de contrôleur disponible')
           }
+
+          // Fallback : utiliser directement l'API du SW même sans contrôleur
+          if (registration && registration.showNotification) {
+            await registration.showNotification(title, {
+              body,
+              tag,
+              icon: `${baseUrl}icons/icon-192.png`,
+              badge: `${baseUrl}icons/icon-72.png`,
+              requireInteraction: false,
+            })
+            console.log(`✅ Notification envoyée via registration: ${title} pour ${cityName}`, maxTemp ? `(temp: ${maxTemp}°C)` : '')
+            return
+          }
+
+          console.warn('⚠️ Service Worker enregistré mais pas de contrôleur disponible')
         } catch (swError) {
           console.warn('⚠️ Erreur avec le service worker, utilisation du fallback:', swError)
         }
       }
       
       // Fallback : utiliser l'API Notification directement si le SW n'est pas disponible
+      const baseUrl = import.meta.env.BASE_URL || '/'
       new Notification(title, {
         body,
-        icon: '/icons/icon-192.png',
-        badge: '/icons/icon-72.png',
+        icon: `${baseUrl}icons/icon-192.png`,
+        badge: `${baseUrl}icons/icon-72.png`,
         tag,
         requireInteraction: false,
       })
