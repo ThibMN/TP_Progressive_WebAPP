@@ -150,6 +150,7 @@ self.addEventListener('message', (event) => {
     
     // Gestion des notifications depuis l'application
     if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+        console.log('[SW] 📬 Message de notification reçu:', event.data);
         const { title, body, tag, icon, badge } = event.data;
         event.waitUntil(
             self.registration.showNotification(title, {
@@ -159,6 +160,10 @@ self.addEventListener('message', (event) => {
                 tag: tag || 'default',
                 requireInteraction: false,
                 vibrate: [200, 100, 200],
+            }).then(() => {
+                console.log('[SW] ✅ Notification affichée avec succès:', title);
+            }).catch((error) => {
+                console.error('[SW] ❌ Erreur lors de l\'affichage de la notification:', error);
             })
         );
     }

@@ -104,12 +104,24 @@ export function useNotifications() {
   }
 
   const checkWeatherConditions = (weather: WeatherData, cityName: string): void => {
-    if (!weather.hourly || weather.hourly.time.length === 0) return
+    console.log('🔍 Vérification des conditions météo pour:', cityName)
+    console.log('🔐 Permission notifications:', Notification.permission)
+    
+    if (Notification.permission !== 'granted') {
+      console.warn('⚠️ Permission de notification non accordée, impossible d\'envoyer des notifications')
+      return
+    }
+    
+    if (!weather.hourly || weather.hourly.time.length === 0) {
+      console.warn('⚠️ Pas de données horaires disponibles')
+      return
+    }
 
     // Créer une clé unique pour cette vérification (ville + première heure)
     const checkKey = `${cityName}-${weather.hourly.time[0]}`
     if (checkKey === lastCheckedRef.current) {
       // Déjà vérifié pour ces mêmes données
+      console.log('⏭️ Données déjà vérifiées, skip')
       return
     }
     lastCheckedRef.current = checkKey
@@ -122,6 +134,13 @@ export function useNotifications() {
       precipitation: weather.hourly.precipitation_probability.slice(0, 4),
     }
 
+    console.log('📊 Données des 4 prochaines heures:', {
+      time: next4HoursData.time,
+      weatherCode: next4HoursData.weatherCode,
+      precipitation: next4HoursData.precipitation,
+      temperature: next4HoursData.temperature,
+    })
+
     let hasRain = false
     let hasHighTemp = false
     let maxTemp = -Infinity
@@ -132,12 +151,18 @@ export function useNotifications() {
       const temperature = next4HoursData.temperature[i]
       const precipitation = next4HoursData.precipitation[i]
 
+      console.log(`  Heure ${i} (${next4HoursData.time[i]}): code=${weatherCode}, précip=${precipitation}%, temp=${temperature}°C`)
+
       // Vérifier si il y a de la pluie (codes météo de pluie ou probabilité significative)
-      if ((CONFIG.RAIN_CODES as readonly number[]).includes(weatherCode) || precipitation > 30) {
+      const isRainCode = (CONFIG.RAIN_CODES as readonly number[]).includes(weatherCode)
+      const hasHighPrecipitation = precipitation > 30
+      
+      if (isRainCode || hasHighPrecipitation) {
         hasRain = true
         if (rainHourIndex === -1) {
           rainHourIndex = i
         }
+        console.log(`  ✅ Pluie détectée: code=${isRainCode}, précip=${hasHighPrecipitation}`)
       }
 
       // Vérifier si la température dépasse 10° et garder la température max
@@ -147,18 +172,34 @@ export function useNotifications() {
       }
     }
 
+    console.log('📈 Résultats:', { hasRain, hasHighTemp, maxTemp, rainHourIndex })
+
     // Récupérer l'état des notifications déjà envoyées
     const stored = getStoredNotifications()
+    console.log('💾 Notifications stockées:', stored)
 
     // Envoyer la notification de pluie si nécessaire
     if (hasRain) {
-      const shouldSendRain =
-        !stored.rain.sent ||
-        stored.rain.city !== cityName ||
-        Date.now() - stored.rain.timestamp > NOTIFICATION_COOLDOWN
+      const timeSinceLastNotification = Date.now() - stored.rain.timestamp
+      const isDifferentCity = stored.rain.city !== cityName
+      const isCooldownExpired = timeSinceLastNotification > NOTIFICATION_COOLDOWN
+      const wasNeverSent = !stored.rain.sent
+
+      const shouldSendRain = wasNeverSent || isDifferentCity || isCooldownExpired
+
+      console.log('🌧️ Évaluation notification pluie:', {
+        shouldSendRain,
+        wasNeverSent,
+        isDifferentCity,
+        isCooldownExpired,
+        timeSinceLastNotification: Math.round(timeSinceLastNotification / 1000 / 60) + ' minutes',
+        lastCity: stored.rain.city,
+        currentCity: cityName,
+      })
 
       if (shouldSendRain) {
         const hoursUntilRain = rainHourIndex + 1
+        console.log('📤 Envoi notification pluie...')
         sendNotification(
           `🌧️ Pluie prévue à ${cityName}`,
           `De la pluie est attendue dans ${hoursUntilRain} heure${hoursUntilRain > 1 ? 's' : ''}.`,
@@ -166,7 +207,11 @@ export function useNotifications() {
           cityName
         )
         storeNotification('rain', cityName)
+      } else {
+        console.log('⏸️ Notification pluie non envoyée (déjà envoyée récemment)')
       }
+    } else {
+      console.log('☀️ Pas de pluie détectée dans les 4 prochaines heures')
     }
 
     // Envoyer la notification de température si nécessaire
@@ -262,9 +307,20 @@ export function useNotifications() {
     }
   }
 
+  // Fonction utilitaire pour réinitialiser les notifications (utile pour les tests)
+  const resetNotifications = (): void => {
+    try {
+      localStorage.removeItem(NOTIFICATION_STORAGE_KEY)
+      console.log('🔄 Notifications réinitialisées')
+    } catch (error) {
+      console.error('Erreur lors de la réinitialisation:', error)
+    }
+  }
+
   return {
     permission,
     requestPermission,
     checkWeatherConditions,
+    resetNotifications, // Exposer pour les tests
   }
 }
